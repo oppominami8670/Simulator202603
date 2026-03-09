@@ -3,102 +3,109 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>料金シミュレーター EX - 究極分析版</title>
+    <title>料金シミュレーター - 区分名称修正版</title>
     <style>
         :root { 
             --primary: #6c5ce7; --bg: #f0f2f5; --accent: #333; 
             --success: #28a745; --pink: #e84393; --pink-bg: #fff0f3;
             --net-bg: #eef2f7; --opt-bg: #fff9db; 
+            --danger: #ff4d4d;
         }
         body { font-family: sans-serif; background: var(--bg); margin: 0; color: var(--accent); line-height: 1.4; }
-        
         #loader-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(245, 245, 245, 0.95); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 9999; }
         .header-bar { background: var(--primary); color: white; padding: 10px 20px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
         .container { max-width: 1400px; margin: auto; padding: 15px; }
-
         .main-section { background: white; border-radius: 20px; padding: 20px; margin-bottom: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
         .section-header { font-size: 1.2rem; font-weight: bold; margin-bottom: 15px; border-left: 5px solid var(--primary); padding-left: 10px; color: var(--primary); }
-
         .simulators-grid { display: flex; gap: 20px; overflow-x: auto; padding-bottom: 20px; }
         .sim-card { background: #fff; padding: 20px; border-radius: 18px; border-top: 8px solid var(--primary); min-width: 400px; width: 400px; flex-shrink: 0; position: relative; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
         
-        .badge { font-size: 0.7rem; padding: 5px 10px; border-radius: 5px; margin-top: 5px; display: none; font-weight: bold; text-align: center; }
-        .inner-title { font-size: 0.85rem; font-weight: bold; color: var(--primary); margin: 15px 0 5px 0; }
+        /* バッジ表示：初期は非表示 */
+        .badge { font-size: 0.75rem; padding: 8px 12px; border-radius: 8px; margin-bottom: 10px; font-weight: bold; display: none; animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+
+        .inner-title { font-size: 0.85rem; font-weight: bold; color: var(--primary); margin: 15px 0 5px 0; display: flex; align-items: center; gap: 5px; }
+        .inner-title::before { content: '●'; font-size: 0.6rem; }
+
+        select, input { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; transition: 0.2s; }
+        select:focus, input:focus { border-color: var(--primary); outline: none; box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.1); }
+
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; margin-top: 8px; }
         
-        select, input { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 6px; margin-top: 8px; }
-        .btn { padding: 8px 4px; border: 1.5px solid #eee; border-radius: 10px; cursor: pointer; text-align: center; font-size: 0.7rem; background: #fff; font-weight: bold; display: flex; align-items: center; justify-content: center; min-height: 40px; }
-        .btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+        .btn { 
+            padding: 10px 6px; border: 2px solid #eee; border-radius: 10px; cursor: pointer; 
+            text-align: center; font-size: 0.75rem; background: #fff; font-weight: bold; 
+            display: flex; align-items: center; justify-content: center; min-height: 45px;
+            transition: all 0.2s; color: #666; position: relative;
+        }
+        .btn.active { background: #fff; color: var(--primary); border-color: var(--primary); box-shadow: 0 4px 10px rgba(108, 92, 231, 0.15); }
+        .btn.active::after { content: '✓'; position: absolute; top: -8px; right: -8px; background: var(--primary); color: white; width: 18px; height: 18px; border-radius: 50%; font-size: 10px; line-height: 18px; }
 
-        /* オプション・ネット（加算系：黄色） */
-        .opt-section { background: var(--opt-bg); padding: 10px; border-radius: 12px; margin-top: 10px; border: 1px solid #ffecb3; }
-        .net-section { background: var(--net-bg); padding: 10px; border-radius: 12px; margin-top: 10px; border: 1px solid #d1d9e6; }
-
-        /* 割引エリア（減算系：ピンク） */
-        .disc-area { background: var(--pink-bg); padding: 10px; border-radius: 12px; margin-top: 10px; border: 1px solid #ffdde1; }
-        .disc-area select { background: white; border: 1.5px solid #ffb1bb; color: var(--pink); font-weight: bold; }
-        .disc-area select:not([value="0"]) { border-color: var(--pink); background: #fff9fa; box-shadow: 0 0 5px rgba(232, 67, 147, 0.2); }
-
+        .section-label { font-size: 0.7rem; font-weight: bold; margin-bottom: 5px; opacity: 0.7; }
+        .opt-section { background: var(--opt-bg); padding: 12px; border-radius: 12px; margin-top: 10px; border: 1px solid #ffecb3; }
+        .net-section { background: var(--net-bg); padding: 12px; border-radius: 12px; margin-top: 10px; border: 1px solid #d1d9e6; }
+        .disc-area { background: var(--pink-bg); padding: 12px; border-radius: 12px; margin-top: 10px; border: 1px solid #ffdde1; }
+        
         .res-table { width: 100%; border-collapse: collapse; font-size: 0.75rem; margin-top: 5px; }
         .res-table th { text-align: left; padding: 4px; color: #666; font-weight: normal; }
         .res-table td { text-align: right; font-family: monospace; font-weight: bold; padding: 4px; }
-        .disc-row th, .disc-row td { color: var(--pink) !important; background: rgba(232, 67, 147, 0.05); }
-        .final-row { border-bottom: 2px solid #eee; }
-
-        .analysis-container { display: grid; grid-template-columns: 1.8fr 1.2fr; gap: 20px; }
-        @media (max-width: 1100px) { .analysis-container { grid-template-columns: 1fr; } }
         
+        .analysis-container { display: grid; grid-template-columns: 1.8fr 1.2fr; gap: 20px; }
         .family-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
         .family-table th { background: var(--primary); color: white; padding: 10px; }
         .family-table td { padding: 8px; border-bottom: 1px solid #eee; text-align: right; }
-        .chart-wrapper { height: 320px; margin-bottom: 20px; position: relative; }
         
         .remove-btn { position: absolute; top: -10px; right: -10px; background: #ff4d4d; color: white; border: none; width: 28px; height: 28px; border-radius: 50%; cursor: pointer; z-index: 10; font-weight: bold; }
-        .add-btn { background: var(--success); color: white; border: none; padding: 8px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
-<div id="loader-overlay"><div>システム・データを構築中...</div></div>
+<div id="loader-overlay"><div>システム読込中...</div></div>
 
 <div class="header-bar">
-    <span>📱 料金シミュレーター EX (Full Logic & Design)</span>
-    <button class="add-btn" onclick="addSimulator()">＋ 家族を追加</button>
+    <span>📱 料金シミュレーター EX</span>
+    <button style="background:var(--success); color:white; border:none; padding:8px 15px; border-radius:8px; cursor:pointer;" onclick="addSimulator()">＋ 家族を追加</button>
 </div>
 
 <div class="container">
     <div class="main-section">
-        <div class="section-header">1. 見積もり作成（メンバー別）</div>
+        <div class="section-header">1. 見積もり入力</div>
         <div id="sim-container" class="simulators-grid"></div>
     </div>
 
     <div class="analysis-container">
         <div class="main-section">
-            <div class="section-header">2. 世帯全体の月額内訳 (1-24ヶ月目)</div>
-            <div class="chart-wrapper"><canvas id="familyChart"></canvas></div>
-            <div style="overflow-x:auto;">
-                <table class="family-table">
-                    <thead>
-                        <tr><th style="text-align:left;">メンバー</th><th>プラン</th><th>端末</th><th>オプション</th><th>ネット</th><th>割引</th><th>合計</th></tr>
-                    </thead>
-                    <tbody id="family-body"></tbody>
-                    <tfoot>
-                        <tr style="background:#f8f7ff; font-weight:bold;"><td colspan="6">世帯月額合計</td><td id="sum-all" style="color:var(--primary); font-size:1.2rem;">¥ 0</td></tr>
-                    </tfoot>
-                </table>
-            </div>
+            <div class="section-header">2. 世帯全体の詳細</div>
+            <div style="height:300px;"><canvas id="familyChart"></canvas></div>
+            <table class="family-table">
+                <thead>
+                    <tr>
+                        <th style="text-align:left;">メンバー</th>
+                        <th>プラン</th>
+                        <th>端末</th>
+                        <th>オプション</th>
+                        <th>ネット</th>
+                        <th>割引</th>
+                        <th>月額合計</th>
+                    </tr>
+                </thead>
+                <tbody id="family-body"></tbody>
+            </table>
         </div>
 
         <div class="main-section">
-            <div class="section-header">3. 乗り換えによる削減効果</div>
-            <div style="background:#fdf2f2; padding:20px; border-radius:15px; text-align:center; border:2px solid #ffcfcf; margin-bottom:20px;">
-                <div style="font-size:0.85rem; color:#666;">現在の世帯月額</div>
-                <input type="number" id="current-total-input" value="15000" style="text-align:center; font-size:1.6rem; font-weight:bold; color:#d63031; border:none; background:transparent;" oninput="updateCalculations()">
-                <div style="margin-top:15px; font-size:0.85rem; color:#666;">24ヶ月の総削減期待額</div>
-                <div style="font-size:2.2rem; color:var(--success); font-weight:bold;">¥ <span id="saving-24">0</span></div>
+            <div class="section-header">3. 削減効果</div>
+            <div id="saving-box" style="padding:20px; border-radius:15px; text-align:center; border:2px solid #ddd; margin-bottom:20px;">
+                <div style="font-size:0.8rem; color:#666;">現在の世帯月額</div>
+                <input type="number" id="current-total-input" value="15000" style="text-align:center; font-size:1.6rem; font-weight:bold; border:none; background:transparent;" oninput="updateCalculations()">
+                
+                <div id="saving-label" style="margin-top:10px; font-weight:bold; color:var(--primary);">24ヶ月の総削減期待額</div>
+                <div id="saving-display" style="font-size:2.4rem; font-weight:900; margin-top:5px; color:var(--danger);">
+                    ¥ <span id="saving-24">0</span>
+                </div>
             </div>
-            <div class="chart-wrapper"><canvas id="diffChart"></canvas></div>
+            <div style="height:250px;"><canvas id="diffChart"></canvas></div>
         </div>
     </div>
 </div>
@@ -111,45 +118,48 @@
             <div class="badge badge-child" style="background:#d1ecf1; color:#0c5460; border:1px solid #bee5eb;">最強こども割適用中</div>
         </div>
 
-        <div class="inner-title">キャリア・端末選択</div>
+        <div class="inner-title">キャリア・端末</div>
         <select class="carrier-sel"></select>
-        <div class="grid cat-btns"><div class="btn active" data-cat="iPhone">iPhone</div><div class="btn" data-cat="Android">Android</div><div class="btn" data-cat="SIMのみ">SIMのみ</div></div>
+        <div class="grid cat-btns">
+            <div class="btn active" data-cat="iPhone">iPhone</div>
+            <div class="btn" data-cat="Android">Android</div>
+            <div class="btn" data-cat="SIMのみ">SIMのみ</div>
+        </div>
         <select class="dev-name"></select>
         <div style="display:flex; gap:5px;"><select class="ins-count"></select><select class="con-type"></select></div>
-        <input type="number" class="dev-disc-input" placeholder="端末値引き総額(24分割反映)">
+        <input type="number" class="dev-disc-input" placeholder="端末値引き総額を入力">
 
-        <div class="inner-title">プラン・データ量</div>
+        <div class="inner-title">プラン設定</div>
         <select class="plan-sel"></select><select class="data-sel" disabled></select>
         
         <div class="disc-area">
-            <div class="inner-title" style="margin-top:0; color:var(--pink);">適用する割引</div>
+            <div class="section-label">▼ 適用割引（最大3つ）</div>
             <div class="disc-select-wrapper"></div>
         </div>
-        
+
         <div class="opt-section">
-            <div class="inner-title" style="margin-top:0; color:#856404;">オプション</div>
+            <div class="section-label">▼ 追加オプション</div>
             <div class="opt-grid grid"></div>
         </div>
 
         <div class="net-section">
-            <div class="inner-title" style="margin-top:0; color:#2c3e50;">固定回線</div>
-            <select class="net-sel"></select><select class="net-type-sel" disabled></select>
+            <div class="section-label">▼ 固定回線・ネット割引</div>
+            <select class="net-sel"></select>
+            <select class="net-type-sel" disabled style="margin-bottom:10px;"></select>
             <div class="net-opt-grid grid"></div>
         </div>
 
-        <div class="breakdown-box" style="margin-top:15px; padding:12px; background:#fff; border: 2px solid #eee; border-radius:12px;">
+        <div class="breakdown-box" style="margin-top:15px; padding:12px; background:#f9f9f9; border-radius:12px; border:1px solid #eee;">
             <table class="res-table">
-                <tr class="final-row">
-                    <th class="label-p1">1-24ヶ月</th>
-                    <td class="final-1" style="color:var(--primary); font-size:1.2rem;">0</td>
-                    <th class="label-p2">25ヶ月目〜</th>
-                    <td class="final-2" style="color:#666; font-size:1.2rem;">0</td>
+                <tr style="border-bottom:2px solid #eee;">
+                    <th class="label-p1">1-24ヶ月</th><td class="final-1" style="color:var(--primary); font-size:1.2rem;">0</td>
+                    <th class="label-p2">25ヶ月〜</th><td class="final-2" style="color:#666; font-size:1.2rem;">0</td>
                 </tr>
-                <tr><th>プラン料金</th><td class="res-plan">0</td><th>プラン</th><td class="res-plan2">0</td></tr>
-                <tr><th>端末代金</th><td class="res-dev">0</td><th>端末</th><td class="res-dev2">0</td></tr>
+                <tr><th>プラン</th><td class="res-plan">0</td><th>プラン継承</th><td class="res-plan2">0</td></tr>
+                <tr><th>端末代</th><td class="res-dev">0</td><th>端末終了</th><td class="res-dev2">0</td></tr>
                 <tr><th>オプション</th><td class="res-opt">0</td><th>オプション</th><td class="res-opt2">0</td></tr>
-                <tr><th>ネット関連</th><td class="res-net">0</td><th>ネット</th><td class="res-net2">0</td></tr>
-                <tr class="disc-row"><th>各種割引</th><td class="res-disc">0</td><th>割引</th><td class="res-disc2">0</td></tr>
+                <tr><th>ネット</th><td class="res-net">0</td><th>ネット</th><td class="res-net2">0</td></tr>
+                <tr style="color:var(--pink)"><th>割引</th><td class="res-disc">0</td><th>割引(永続)</th><td class="res-disc2">0</td></tr>
             </table>
         </div>
     </div>
@@ -157,14 +167,10 @@
 
 <script>
 const GAS_URL = "https://script.google.com/macros/s/AKfycbxUj8Ojmgq2H-weGZRui_rdi9W6_y6QSUjbjKY1Lr89IsErmVNqxYZx_walEIs3QoaA/exec";
-
-// 排他グループ定義
 const EXCLUSIVE_GROUPS = {
     'UQ': [["自宅セット", "家族セット"]],
     'Y!mobile': [["家族割引", "おうち割 光セット", "おうち割 でんきセット"], ["PayPayカード割 ゴールド", "PayPayカード割"]],
-    'docomo': [["ドコモ光セット", "home 5G"]],
-    'au': [["スマートバリュー", "家族割プラス"]],
-    'softbank': [["おうち割 光セット", "新みんな家族割"]]
+    'softbank': []
 };
 
 let GLOBAL_DATA = null;
@@ -178,9 +184,7 @@ async function initApp() {
         document.getElementById('loader-overlay').style.display = 'none';
         initCharts();
         addSimulator();
-    } catch (e) { 
-        alert("データ取得に失敗しました。ネット環境を確認してください。"); 
-    }
+    } catch (e) { alert("データ取得エラー"); }
 }
 
 class SimulatorInstance {
@@ -189,71 +193,47 @@ class SimulatorInstance {
         this.selectedOpts = new Map();
         this.selectedNetOpts = new Map();
         this.netMainPrice = [0, 0];
-        this.vals = { plan:0, dev:0, opt:0, net:0, disc:0 };
         this.total1 = 0; this.total2 = 0;
         this.initDOM(); this.setupCarrier(); this.bindEvents();
     }
 
     initDOM() {
         this.dom = {
-            carrier: this.el.querySelector('.carrier-sel'), 
-            device: this.el.querySelector('.dev-name'),
-            ins: this.el.querySelector('.ins-count'), 
-            con: this.el.querySelector('.con-type'),
-            devDisc: this.el.querySelector('.dev-disc-input'), 
-            plan: this.el.querySelector('.plan-sel'),
-            data: this.el.querySelector('.data-sel'), 
-            discWrapper: this.el.querySelector('.disc-select-wrapper'),
-            net: this.el.querySelector('.net-sel'), 
-            netType: this.el.querySelector('.net-type-sel'),
-            netOptGrid: this.el.querySelector('.net-opt-grid'), 
-            optGrid: this.el.querySelector('.opt-grid'),
-            labelP1: this.el.querySelector('.label-p1'), 
-            labelP2: this.el.querySelector('.label-p2'),
-            badgeSenior: this.el.querySelector('.badge-senior'), 
-            badgeChild: this.el.querySelector('.badge-child'),
-            resPlan: this.el.querySelector('.res-plan'), 
-            resPlan2: this.el.querySelector('.res-plan2'),
-            resDev: this.el.querySelector('.res-dev'), 
-            resDev2: this.el.querySelector('.res-dev2'),
-            resOpt: this.el.querySelector('.res-opt'), 
-            resOpt2: this.el.querySelector('.res-opt2'),
-            resNet: this.el.querySelector('.res-net'), 
-            resNet2: this.el.querySelector('.res-net2'),
-            resDisc: this.el.querySelector('.res-disc'), 
-            resDisc2: this.el.querySelector('.res-disc2'),
-            final1: this.el.querySelector('.final-1'), 
-            final2: this.el.querySelector('.final-2')
+            carrier: this.el.querySelector('.carrier-sel'), device: this.el.querySelector('.dev-name'),
+            ins: this.el.querySelector('.ins-count'), con: this.el.querySelector('.con-type'),
+            devDisc: this.el.querySelector('.dev-disc-input'), plan: this.el.querySelector('.plan-sel'),
+            data: this.el.querySelector('.data-sel'), discArea: this.el.querySelector('.disc-select-wrapper'),
+            net: this.el.querySelector('.net-sel'), netType: this.el.querySelector('.net-type-sel'),
+            netOptGrid: this.el.querySelector('.net-opt-grid'), optGrid: this.el.querySelector('.opt-grid'),
+            labelP1: this.el.querySelector('.label-p1'), labelP2: this.el.querySelector('.label-p2'),
+            badgeSenior: this.el.querySelector('.badge-senior'), badgeChild: this.el.querySelector('.badge-child')
         };
     }
 
     setupCarrier() {
         this.dom.carrier.innerHTML = '<option value="">キャリア選択</option>';
         Object.keys(GLOBAL_DATA).forEach(c => this.dom.carrier.appendChild(new Option(c, c)));
-        // 割引セレクトボックス3つ生成
         for(let i=0; i<3; i++) {
             const s = document.createElement('select');
-            s.onchange = (e) => { this.autoCheckOptions(e.target.value); this.refreshDiscounts(); this.calc(); };
-            this.dom.discWrapper.appendChild(s);
+            s.onchange = (e) => { 
+                if(e.target.value !== "0") e.target.classList.add('has-val');
+                else e.target.classList.remove('has-val');
+                this.autoCheckOptions(e.target.value); this.refreshDiscounts(); this.calc(); 
+            };
+            this.dom.discArea.appendChild(s);
         }
     }
 
     bindEvents() {
-        this.el.querySelector('.remove-btn').onclick = () => { 
-            this.el.remove(); 
-            instances = instances.filter(i => i !== this); 
-            updateCalculations(); 
-        };
+        this.el.querySelector('.remove-btn').onclick = () => { this.el.remove(); instances = instances.filter(i => i !== this); updateCalculations(); };
         this.dom.carrier.onchange = () => this.loadCarrier();
         this.el.querySelectorAll('.cat-btns .btn').forEach(b => b.onclick = (e) => {
             this.el.querySelectorAll('.cat-btns .btn').forEach(x => x.classList.remove('active'));
-            e.target.classList.add('active'); 
-            this.currentCat = e.target.dataset.cat; 
-            this.loadDevices();
+            e.target.classList.add('active'); this.currentCat = e.target.dataset.cat; this.loadDevices();
         });
         this.dom.device.onchange = () => this.loadIns();
-        this.dom.ins.onchange = () => this.loadCon();
-        this.dom.con.onchange = () => this.loadOpts();
+        this.dom.ins.onchange = () => this.calc();
+        this.dom.con.onchange = () => this.calc();
         this.dom.devDisc.oninput = () => this.calc();
         this.dom.plan.onchange = () => this.loadData();
         this.dom.data.onchange = () => { this.refreshDiscounts(); this.calc(); };
@@ -282,7 +262,7 @@ class SimulatorInstance {
     loadIns() {
         const c = this.dom.carrier.value;
         const d = GLOBAL_DATA[c].devices.filter(x => x[1] === this.dom.device.value);
-        this.dom.ins.innerHTML = '<option value="">分割</option>';
+        this.dom.ins.innerHTML = '';
         [...new Set(d.map(x => x[2]))].forEach(n => this.dom.ins.appendChild(new Option(n+"回", n)));
         this.loadCon();
     }
@@ -291,7 +271,14 @@ class SimulatorInstance {
         const c = this.dom.carrier.value;
         const d = GLOBAL_DATA[c].devices.filter(x => x[1] === this.dom.device.value && x[2] == this.dom.ins.value);
         this.dom.con.innerHTML = '<option value="">区分</option>';
-        d.forEach(r => this.dom.con.appendChild(new Option(r[3], r[3])));
+        
+        // --- 修正箇所：内部ラベルを表示名に変換 ---
+        const labelMap = { 'mnp': 'MNP', 'new': '新規', 'standalone': '機種変更' };
+        d.forEach(r => {
+            const rawVal = r[3];
+            const displayLabel = labelMap[rawVal] || rawVal;
+            this.dom.con.appendChild(new Option(displayLabel, rawVal));
+        });
         this.loadOpts();
     }
 
@@ -307,41 +294,48 @@ class SimulatorInstance {
     refreshDiscounts() {
         const carrier = this.dom.carrier.value;
         const p = this.dom.plan.value;
-        const selects = Array.from(this.dom.discWrapper.querySelectorAll('select'));
+        const selects = Array.from(this.dom.discArea.querySelectorAll('select'));
         const currentExGroups = EXCLUSIVE_GROUPS[carrier] || [];
 
         selects.forEach((s, index) => {
             const currentVal = s.value;
             const othersSelected = selects.filter((_, idx) => idx !== index).map(sel => sel.value.split('_')[0]).filter(v => v !== "0" && v !== "");
-            s.innerHTML = '<option value="0">割引なし</option>';
             
+            s.innerHTML = '<option value="0">割引なし</option>';
             this.masterDiscounts.forEach(d => {
                 let name = d[0], price = parseInt(d[2]);
                 
-                // キャリア別詳細ロジック
                 if (carrier === 'Rakuten') {
                     const allowed = ["最強家族割", "最強こども割", "最強青春割", "最強シニアプログラム"];
                     if (!allowed.some(a => name.includes(a))) return;
-                    if (othersSelected.some(o => o.includes("最強シニア")) && (name.includes("最強こども") || name.includes("最強青春"))) return;
-                    if (name.includes("最強シニア") && othersSelected.some(o => o.includes("最強こども") || o.includes("最強青春"))) return;
+                    if (othersSelected.some(o => o.includes("最強シニアプログラム")) && (name.includes("最強こども割") || name.includes("最強青春割"))) return;
+                    if (name.includes("最強シニアプログラム") && othersSelected.some(o => o.includes("最強こども割") || o.includes("最強青春割"))) return;
                 }
+                
                 if (carrier === 'Y!mobile') {
                     if (name.includes("親子割") && p.includes("シンプル3 S")) return;
                     if (p.includes("シンプル3 S") && name.includes("でんきセット")) return;
                 }
+
                 if (carrier === 'docomo') {
                     if (p.includes("ahamo")) return;
-                    if (p.includes("ドコモmini") && !["ドコモ光", "home 5G", "dカード", "でんき"].some(a => name.includes(a))) return;
+                    if (p.includes("ドコモポイ活MAX20") && name.includes("長期利用割")) return;
+                    if (p.includes("ドコモmini") && !["ドコモ光セット", "home 5G", "dカード割", "ドコモでんき"].some(a => name.includes(a))) return;
                 }
+                
                 if (carrier === 'au') {
-                    if (p.includes("U12バリュー") && !name.includes("U12家族割") && !name.includes("カードお支払い割")) return;
+                    if (p.includes("U12バリュー") && !["U12家族割", "カードお支払い割"].some(a => name.includes(a))) return;
+                    if (name.includes("U12家族割") && !p.includes("U12バリュー")) return;
+                    if (p.includes("マネ活2") && (name.includes("カードお支払い割") || name.includes("家族割プラス"))) return;
+                    if (p.includes("シニアバリュー") && name.includes("家族割プラス")) return;
                 }
 
                 if (othersSelected.includes(name)) return;
                 let isAllowed = true;
                 currentExGroups.forEach(group => {
-                    if (group.some(g => name.includes(g)) && othersSelected.some(other => group.some(g => other.includes(g)))) isAllowed = false;
+                    if (group.some(g => name.includes(g)) && othersSelected.some(o => group.some(g => o.includes(g)))) isAllowed = false;
                 });
+
                 if (isAllowed) s.appendChild(new Option(`${name}(${price}円)`, `${name}_${price}`));
             });
             s.value = currentVal;
@@ -370,11 +364,7 @@ class SimulatorInstance {
     addOpt(t, p, k) {
         const b = document.createElement('div'); b.className = 'btn'; b.textContent = t;
         if(this.selectedOpts.has(k)) b.classList.add('active');
-        b.onclick = () => { 
-            b.classList.toggle('active'); 
-            b.classList.contains('active') ? this.selectedOpts.set(k, p) : this.selectedOpts.delete(k); 
-            this.calc(); 
-        };
+        b.onclick = () => { b.classList.toggle('active'); b.classList.contains('active') ? this.selectedOpts.set(k, p) : this.selectedOpts.delete(k); this.calc(); };
         this.dom.optGrid.appendChild(b);
     }
 
@@ -415,26 +405,24 @@ class SimulatorInstance {
     }
 
     calc() {
-        const c = this.dom.carrier.value; if(!c) return;
-        const pName = this.dom.plan.value;
+        const c = this.dom.carrier.value; const pName = this.dom.plan.value;
         const insValue = parseInt(this.dom.ins.value) || 24;
         const planP = parseInt(this.dom.data.value) || 0;
         const dataLabel = this.dom.data.options[this.dom.data.selectedIndex]?.text || "";
         const devDInput = parseInt(this.dom.devDisc.value) || 0;
         const devD = Math.floor(devDInput / 24);
-        
         let threshold = (insValue === 36) ? 36 : 24;
-        this.dom.labelP1.textContent = `1-${threshold}ヶ月`; this.dom.labelP2.textContent = `${threshold + 1}ヶ月〜`;
-
+        this.dom.labelP1.textContent = `1-${threshold}ヶ月`; this.dom.labelP2.textContent = `${threshold + 1}ヶ月目～`;
+        
         let d1 = 0, d2 = 0;
         const r = GLOBAL_DATA[c].devices.find(x => x[1] === this.dom.device.value && x[2] == insValue && x[3] === this.dom.con.value);
         if(r) { d1 = Math.max(0, (parseInt(r[4])||0) - devD); d2 = parseInt(r[5])||0; }
-
+        
         let optT = 0; this.selectedOpts.forEach(v => optT += parseInt(v));
         let netT = 0; this.selectedNetOpts.forEach(v => netT += parseInt(v));
-
+        
         let baseDisc1 = 0, baseDisc2 = 0; const selectedDiscNames = [];
-        this.dom.discWrapper.querySelectorAll('select').forEach(s => {
+        this.dom.discArea.querySelectorAll('select').forEach(s => {
             const valStr = s.value;
             if(valStr && valStr !== "0") {
                 let name = valStr.split('_')[0], price = parseInt(valStr.split('_')[1]);
@@ -442,11 +430,14 @@ class SimulatorInstance {
                     if (name.includes("スマートバリュー")) price = pName.includes("U18バリュー") ? -550 : -1100;
                     if (pName.includes("U18バリュー") && name.includes("家族割プラス")) price = (Math.abs(price) === 1210) ? -550 : -220;
                 }
-                if (c === 'UQ' && pName.includes("トクトク") && name.includes("親子応援割") && dataLabel.includes("~5GB")) price = -550;
-                if (c === 'Rakuten' && name.includes("最強こども割")) price = (pName.includes("最強U-NEXT") || !dataLabel.includes("~3GB")) ? -110 : -440;
-
+                if (c === 'UQ' && pName.includes("トクトク") && name.includes("親子応援割")) { if (dataLabel.includes("~5GB")) price = -550; }
+                if (c === 'Rakuten' && name.includes("最強こども割")) {
+                    if (pName.includes("最強U-NEXTプラン")) price = -110;
+                    else if (pName.includes("最強プラン")) price = (dataLabel.includes("~3GB")) ? -440 : -110;
+                }
                 const LIMITED = ["1年おトク割+", "デビュー特典", "応援割", "親子割"];
-                baseDisc1 += price; if (!LIMITED.some(ld => name.includes(ld))) baseDisc2 += price;
+                const isLim = LIMITED.some(ld => name.includes(ld));
+                baseDisc1 += price; if (!isLim) baseDisc2 += price;
                 selectedDiscNames.push(name);
             }
         });
@@ -454,8 +445,9 @@ class SimulatorInstance {
         let bonusTotal = 0, showS = false, showC = false;
         if (c === 'Rakuten') {
             if (selectedDiscNames.some(t => t.includes('こども'))) showC = true;
+            const isSenior = selectedDiscNames.some(t => t.includes('シニア'));
             const optK = Array.from(this.selectedOpts.keys());
-            if (selectedDiscNames.some(t => t.includes('シニア')) && optK.some(n=>/通話/.test(n)) && optK.some(n=>/操作/.test(n)) && optK.some(n=>/ノートン/.test(n)) && optK.some(n=>/Whoscall/.test(n))) {
+            if (isSenior && optK.some(n=>/通話/.test(n)) && optK.some(n=>/操作サポート/.test(n)) && optK.some(n=>/ノートン/.test(n)) && optK.some(n=>/Whoscall/.test(n))) {
                 bonusTotal -= 1100; showS = true;
             }
         }
@@ -465,59 +457,60 @@ class SimulatorInstance {
         const finalDisc1 = baseDisc1 + bonusTotal;
         const finalDisc2 = baseDisc2 + (showS ? -1100 : 0);
 
-        this.vals = { plan:planP, dev:d1, opt:optT, net:(this.netMainPrice[0]+netT), disc:finalDisc1 };
-        this.total1 = Math.max(0, this.vals.plan + this.vals.dev + this.vals.opt + this.vals.net + this.vals.disc);
+        this.el.querySelector('.res-plan').textContent = planP.toLocaleString();
+        this.el.querySelector('.res-plan2').textContent = planP.toLocaleString();
+        this.el.querySelector('.res-dev').textContent = d1.toLocaleString();
+        this.el.querySelector('.res-dev2').textContent = d2.toLocaleString();
+        this.el.querySelector('.res-opt').textContent = optT.toLocaleString();
+        this.el.querySelector('.res-opt2').textContent = optT.toLocaleString();
+        this.el.querySelector('.res-net').textContent = (this.netMainPrice[0]+netT).toLocaleString();
+        this.el.querySelector('.res-net2').textContent = (this.netMainPrice[1]+netT).toLocaleString();
+        this.el.querySelector('.res-disc').textContent = finalDisc1.toLocaleString();
+        this.el.querySelector('.res-disc2').textContent = finalDisc2.toLocaleString();
+        
+        this.total1 = Math.max(0, planP + d1 + optT + this.netMainPrice[0] + netT + finalDisc1);
         this.total2 = Math.max(0, planP + d2 + optT + this.netMainPrice[1] + netT + finalDisc2);
-
-        this.dom.resPlan.textContent = this.vals.plan.toLocaleString();
-        this.dom.resPlan2.textContent = planP.toLocaleString();
-        this.dom.resDev.textContent = this.vals.dev.toLocaleString();
-        this.dom.resDev2.textContent = d2.toLocaleString();
-        this.dom.resOpt.textContent = this.vals.opt.toLocaleString();
-        this.dom.resOpt2.textContent = optT.toLocaleString();
-        this.dom.resNet.textContent = this.vals.net.toLocaleString();
-        this.dom.resNet2.textContent = (this.netMainPrice[1]+netT).toLocaleString();
-        this.dom.resDisc.textContent = this.vals.disc.toLocaleString();
-        this.dom.resDisc2.textContent = finalDisc2.toLocaleString();
-        this.dom.final1.textContent = this.total1.toLocaleString();
-        this.dom.final2.textContent = this.total2.toLocaleString();
+        this.el.querySelector('.final-1').textContent = this.total1.toLocaleString();
+        this.el.querySelector('.final-2').textContent = this.total2.toLocaleString();
         updateCalculations();
     }
 }
 
 function updateCalculations() {
-    let sTotal = 0; const body = document.getElementById('family-body'); body.innerHTML = '';
-    const labels = [];
-    const chartData = { p:[], d:[], o:[], n:[] };
+    let sTotal = 0; 
+    const body = document.getElementById('family-body'); body.innerHTML = '';
+    const chartLabels = [], chartP = [], chartD = [], chartO = [], chartN = [];
 
     instances.forEach((inst, i) => {
-        const name = `家族${i+1}`;
-        labels.push(name);
-        sTotal += inst.total1;
-        chartData.p.push(Math.max(0, inst.vals.plan + inst.vals.disc));
-        chartData.d.push(inst.vals.dev);
-        chartData.o.push(inst.vals.opt);
-        chartData.n.push(inst.vals.net);
+        const name = `家族${i+1}`; chartLabels.push(name); sTotal += inst.total1;
+        const pVal = parseInt(inst.el.querySelector('.res-plan').textContent.replace(/,/g,'')) || 0;
+        const dVal = parseInt(inst.el.querySelector('.res-dev').textContent.replace(/,/g,'')) || 0;
+        const oVal = parseInt(inst.el.querySelector('.res-opt').textContent.replace(/,/g,'')) || 0;
+        const nVal = parseInt(inst.el.querySelector('.res-net').textContent.replace(/,/g,'')) || 0;
+        const discVal = parseInt(inst.el.querySelector('.res-disc').textContent.replace(/,/g,'')) || 0;
+        chartP.push(Math.max(0, pVal + discVal)); chartD.push(dVal); chartO.push(oVal); chartN.push(nVal);
 
-        body.innerHTML += `<tr>
-            <td style="text-align:left;">${name}(${inst.dom.carrier.value})</td>
-            <td>${inst.vals.plan.toLocaleString()}</td><td>${inst.vals.dev.toLocaleString()}</td>
-            <td>${inst.vals.opt.toLocaleString()}</td><td>${inst.vals.net.toLocaleString()}</td>
-            <td style="color:var(--pink)">${inst.vals.disc.toLocaleString()}</td>
-            <td style="font-weight:bold;">¥${inst.total1.toLocaleString()}</td>
-        </tr>`;
+        body.innerHTML += `<tr><td style="text-align:left; font-weight:bold;">${name}</td><td>${pVal.toLocaleString()}</td><td>${dVal.toLocaleString()}</td><td>${oVal.toLocaleString()}</td><td>${nVal.toLocaleString()}</td><td style="color:var(--pink)">${discVal.toLocaleString()}</td><td style="font-weight:bold; background:#f8f9fa;">¥${inst.total1.toLocaleString()}</td></tr>`;
     });
 
-    document.getElementById('sum-all').textContent = `¥ ${sTotal.toLocaleString()}`;
-    familyChart.data.labels = labels;
-    familyChart.data.datasets[0].data = chartData.p;
-    familyChart.data.datasets[1].data = chartData.d;
-    familyChart.data.datasets[2].data = chartData.o;
-    familyChart.data.datasets[3].data = chartData.n;
+    familyChart.data.labels = chartLabels;
+    familyChart.data.datasets[0].data = chartP; familyChart.data.datasets[1].data = chartD;
+    familyChart.data.datasets[2].data = chartO; familyChart.data.datasets[3].data = chartN;
     familyChart.update();
 
     const current = parseInt(document.getElementById('current-total-input').value) || 0;
-    document.getElementById('saving-24').textContent = Math.max(0, (current - sTotal) * 24).toLocaleString();
+    const saving24 = (current - sTotal) * 24;
+    document.getElementById('saving-24').textContent = Math.abs(saving24).toLocaleString();
+    const box = document.getElementById('saving-box');
+    if (saving24 < 0) {
+        box.style.borderColor = "var(--danger)";
+        document.getElementById('saving-label').textContent = "24ヶ月の総コスト増加額";
+        document.getElementById('saving-label').style.color = "var(--danger)";
+    } else {
+        box.style.borderColor = "var(--success)";
+        document.getElementById('saving-label').textContent = "24ヶ月の総削減期待額";
+        document.getElementById('saving-label').style.color = "var(--primary)";
+    }
     diffChart.data.datasets[0].data = [current, sTotal];
     diffChart.update();
 }
@@ -525,33 +518,18 @@ function updateCalculations() {
 function initCharts() {
     familyChart = new Chart(document.getElementById('familyChart'), {
         type: 'bar',
-        data: {
-            labels: [],
-            datasets: [
-                { label: 'プラン(割引後)', data: [], backgroundColor: '#ef5350' },
-                { label: '端末代', data: [], backgroundColor: '#7e57c2' },
-                { label: 'オプション', data: [], backgroundColor: '#ffca28' },
-                { label: 'ネット関連', data: [], backgroundColor: '#42a5f5' }
-            ]
-        },
-        options: {
-            responsive: true, maintainAspectRatio: false,
-            scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } },
-            plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } } }
-        }
+        data: { labels: [], datasets: [
+            { label: 'プラン(割引後)', data: [], backgroundColor: '#ef5350' },
+            { label: '端末', data: [], backgroundColor: '#42a5f5' },
+            { label: 'オプション', data: [], backgroundColor: '#b39ddb' },
+            { label: 'ネット', data: [], backgroundColor: '#ffca28' }
+        ]},
+        options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true }, y: { stacked: true } } }
     });
-
     diffChart = new Chart(document.getElementById('diffChart'), {
         type: 'bar',
-        data: {
-            labels: ['現状', '乗り換え'],
-            datasets: [{ data: [0, 0], backgroundColor: ['#b0bec5', '#6c5ce7'], borderRadius: 6 }]
-        },
-        options: {
-            responsive: true, maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
-            scales: { y: { beginAtZero: true } }
-        }
+        data: { labels: ['現状', '乗り換え後'], datasets: [{ data: [0, 0], backgroundColor: ['#b0bec5', '#6c5ce7'] }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
     });
 }
 
